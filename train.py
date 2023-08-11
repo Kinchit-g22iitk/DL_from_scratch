@@ -1,62 +1,24 @@
 import numpy as np
-import os
-def unpickle(file):
-    import pickle
-    with open(file, 'rb') as fo:
-        dict = pickle.load(fo, encoding='bytes')
-    return dict
-file_1 = '/content/drive/MyDrive/cifar-10-batches-py/data_batch_1'
-data_batch_1 = unpickle(file_1)
-data_batch_1.keys()
-file_2 = '/content/drive/MyDrive/cifar-10-batches-py/data_batch_1'
-data_batch_2 = unpickle(file_2)
-data_batch_2.keys()
-file_3 = '/content/drive/MyDrive/cifar-10-batches-py/data_batch_1'
-data_batch_3 = unpickle(file_3)
-data_batch_3.keys()
-file_4 = '/content/drive/MyDrive/cifar-10-batches-py/data_batch_1'
-data_batch_4 = unpickle(file_4)
-data_batch_4.keys()
-file_5 = '/content/drive/MyDrive/cifar-10-batches-py/data_batch_1'
-data_batch_5 = unpickle(file_5)
-data_batch_5.keys()
-file = '/content/drive/MyDrive/cifar-10-batches-py/test_batch'
-data_test = unpickle(file)
-data_batch_1[b'data'] = np.reshape(data_batch_1[b'data'],(10000,32,32,3))
-data_batch_2[b'data'] = np.reshape(data_batch_2[b'data'],(10000,32,32,3))
-data_batch_3[b'data'] = np.reshape(data_batch_3[b'data'],(10000,32,32,3))
-data_batch_4[b'data'] = np.reshape(data_batch_4[b'data'],(10000,32,32,3))
-data_batch_5[b'data'] = np.reshape(data_batch_5[b'data'],(10000,32,32,3))
-x_1 = data_batch_1[b'data']
-x_2 = data_batch_2[b'data']
-x_3 = data_batch_3[b'data']
-x_4 = data_batch_4[b'data']
-x_5 = data_batch_5[b'data']
-y_1 = data_batch_1[b'labels']
-y_2 = data_batch_2[b'labels']
-y_3 = data_batch_3[b'labels']
-y_4 = data_batch_4[b'labels']
-y_5 = data_batch_5[b'labels']
-y_t = data_test[b'labels']
-y = y_1+y_2+y_3+y_4+y_5
-con = np.concatenate((x_1,x_2,x_3,x_4,x_5),axis=0)
-con = np.reshape(con,(50000,3,32,32))
-con.shape
-test = data_test[b'data']
-test = np.reshape(test,(10000,3,32,32))
-(train_X,train_y),(test_X,test_y) = (con,y),(test,y_t)
+from keras.datasets import cifar10
+(X_train, y_train), (X_test, y_test) = cifar10.load_data()
+X_train = np.reshape(X_train,(50000,3,32,32))
+X_test = np.reshape(X_test,(50000,3,32,32))
 import random
 train_X = train_X/255
 test_X = test_X/255
 train_data=list(zip(train_X,train_y))
 test_data=list(zip(test_X,test_y))
-# (x_train, y_train), (x_test, y_test) = cifar10.load_data()
+
 def sigmoid(z):
     z = 1/(1+np.exp(-z))
     return z
 def tanh(z):
     z = (np.exp(z)-np.exp(-z))/(np.exp(z)+np.exp(-z))
     return z
+
+"""
+Network Class which represents the neural network, stores the layers along with their corresponding weights and biases,
+"""
 class Network():
     def __init__(self,l):
         w = np.ones((3,32,32))
@@ -77,7 +39,7 @@ class Network():
         self.l = l
         path1 = './expt'
         path2 = './save'
-        if not os.path.exists(path1):
+        if not os.path.exists(path1): # Creating folder for storing log files for storing data
             os.mkdir(path1)
         if not os.path.exists(path2):
             os.mkdir(path2)
@@ -97,7 +59,7 @@ class Network():
         a = sum.reshape((sum.shape[0]**2,1))
         self.a = a
         return a
-    def forwardpropagation(self,a):
+    def forwardpropagation(self,a): #Code for implementing forward propagation
         a = self.flatten(a)
         for b,w in zip(self.bias[1:], self.weights[1:]):
             a=sigmoid(np.matmul(w,a)+b)
@@ -111,21 +73,26 @@ class Network():
             y_t[np.arange(len(y)), y] = 1
             y_t= y_t.T
             
+            # Storing gradients of weights and bias 
             nabla_b=[np.zeros(b.shape) for b in self.bias]
             nabla_w=[np.zeros(w.shape) for w in self.weights]
+            
             x = self.flatten(x)
    
             activation=x
-            activation_list=[x]
+            activation_list=[x] # List storing activation for different neurons of network
+            
             for w,b in zip(self.weights[1:],self.bias[1:]):
                 activation= sigmoid(np.matmul(w,activation)+b)
-                activation_list.append(activation)            
-            delta = (activation_list[-1]-y_t)*activation_list[-1]*(1-activation_list[-1]) #dc/dz3
+                activation_list.append(activation)  
+            
+            delta = (activation_list[-1]-y_t)*activation_list[-1]*(1-activation_list[-1]) # Calculating gradients for last layer
             m=len(y_t)    
             nabla_w[-1]=np.matmul(delta,activation_list[-2].T)
             
-            nabla_b[-1] = delta   
-    
+            nabla_b[-1] = delta
+            
+    `       # Calclulating gradients for hidden layers
 
             for j in range(2,(len(self.l))+2):
                 sig_der = activation_list[-j]*(1-activation_list[-j])
@@ -135,30 +102,36 @@ class Network():
                 nabla_w[-j]= np.matmul(delta,activation_list[-j-1].T)
     
             return (nabla_b,nabla_w)
+
         elif fun == "tanh":
+
             y_t = np.zeros((len(y), 10))
             y_t[np.arange(len(y)), y] = 1
             y_t= y_t.T
-           
-            # Doing one hot encoding in these lines
-        
+
+             # Storing gradients of weights and bias 
+
             nabla_b=[np.zeros(b.shape) for b in self.bias]
             nabla_w=[np.zeros(w.shape) for w in self.weights]
+
             x = self.flatten(x)
+
             activation=x
-            activation_list=[x]
+            activation_list=[x] # List storing activation for different neurons of network
 
             for w,b in zip(self.weights[1:],self.bias[1:]):
                 activation= tanh(np.matmul(w,activation)+b)
                 activation_list.append(activation)
 
             
-            delta = (activation_list[-1]-y_t)*(1-activation_list[-1]**2) #dc/dz3
+            delta = (activation_list[-1]-y_t)*(1-activation_list[-1]**2) # Calculating gradients for last layer
             m=len(y_t)
 
             nabla_w[-1]=np.matmul(delta,activation_list[-2].T)
-            
             nabla_b[-1] = delta
+
+            # Calclulating gradients for hidden layers
+
             for j in range(2,(len(self.l))+2):
                 sig_der = (1-activation_list[-j]**2)
                 delta= np.matmul(self.weights[-j+1].T,delta)*sig_der
@@ -167,9 +140,10 @@ class Network():
                 nabla_b[-j]= (delta)
                 nabla_w[-j]= np.matmul(delta,activation_list[-j-1].T)
             return (nabla_b,nabla_w)
-    def update_mini_batch_gd(self,mini_batch):
+    def update_mini_batch_gd(self,mini_batch): # Code for implementing mini-batch gradient descent optimization
         nabla_b=[np.zeros(b.shape) for b in self.bias]
         nabla_w=[np.zeros(w.shape) for w in self.weights]
+        
         for (x,y) in mini_batch:
             (delta_b,delta_w) = self.backpropagation(x,y,self.fun)
             nabla_b=[nb + db for nb,db in zip(nabla_b,delta_b)]
@@ -177,7 +151,8 @@ class Network():
 
         self.weights=[w- self.lr*nw/len(mini_batch) for w,nw in zip(self.weights,nabla_w)]
         self.bias=[b-self.lr*nb/len(mini_batch) for b,nb in zip(self.bias,nabla_b)]
-    def update_mini_batch_mom(self,mini_batch):
+    def update_mini_batch_mom(self,mini_batch): # Code for implementing mini-batch gradient descent with momentum optimization
+        
         nabla_b=[np.zeros(b.shape) for b in self.bias]
         nabla_w=[np.zeros(w.shape) for w in self.weights]
         delta_w=[np.zeros(w.shape) for w in self.weights]
@@ -194,7 +169,9 @@ class Network():
                 nabla_w=[self.beta*nw + (self.lr*dw)/i for nw,dw in zip(nabla_w,delta_w)]
                 self.weights=[w- nw for w,nw in zip(self.weights,nabla_w)]  #averaging over many example
                 self.bias=[b-nb for b,nb in zip(self.bias,nabla_b)]
-    def update_mini_batch_nag(self, mini_batch):
+                
+    def update_mini_batch_nag(self, mini_batch): # Code for implementing mini-batch nag gradient descent optimization
+        
         delta_b = [np.zeros(b.shape) for b in self.bias]
         delta_w = [np.zeros(w.shape) for w in self.weights]
         nabla_b = [np.zeros(b.shape) for b in self.bias]
@@ -218,7 +195,7 @@ class Network():
                 
                 self.weights = [w - nw for w, nw in zip(self.weights, nabla_w)]  # averaging over many examples
                 self.bias = [b - nb for b, nb in zip(self.bias, nabla_b)] 
-    def update_mini_batch_adam(self,mini_batch,beta1=0.9,beta2=0.999,epsi=1e-8):
+    def update_mini_batch_adam(self,mini_batch,beta1=0.9,beta2=0.999,epsi=1e-8): # Code for implementing mini-batch adam optimization
         i = 0
         delta_b = [np.zeros(b.shape) for b in self.bias]
         delta_w = [np.zeros(w.shape) for w in self.weights]
@@ -241,19 +218,19 @@ class Network():
                 for i in range(len(self.weights)):
                     self.weights[i] -= (self.lr/np.sqrt(nabla_w[i]+epsi))*acc_w[i]
                     self.bias[i] -= (self.lr/np.sqrt(nabla_b[i]+epsi))*acc_b[i]
-    def anneal(self,lr):
+    def anneal(self,lr): 
         lr = lr/2
-    def cross_entropy_loss(self,y,y_hat):
+    def cross_entropy_loss(self,y,y_hat): # Calculating cross entropy loss
         sum = 0
         for i in range(len(y)):
             sum -= (y*np.log(y_hat) + (1-y)*np.log(1-y_hat))
         return sum
-    def squared_error_loss(self,y,y_hat):
+    def squared_error_loss(self,y,y_hat): # Calculating square error loss
         sum = 0
         for i in range(len(y)):
             sum += (y-y_hat)**2
         return sum
-    def training_batch_loss(self,loss,batch):
+    def training_batch_loss(self,loss,batch): # Calculating training batch loss
         sum = 0
         for (x,y) in batch:
             self.flatten(x)
@@ -263,7 +240,7 @@ class Network():
                 elif loss == "ce":
                     sum+= self.cross_entropy_loss(y,y_hat)
         return sum
-    def validation_loss(self,loss,batch):
+    def validation_loss(self,loss,batch): # Calculating training batch loss
         sum = 0
         for (x,y) in batch:
             for y_hat in self.forward_propagation(x):
@@ -272,7 +249,7 @@ class Network():
                 elif loss == "ce":
                     sum+= self.cross_entropy_loss(y,y_hat)
         return sum           
-    def mini_batch(self,optimizer):
+    def mini_batch(self,optimizer): # Applying mini-batch optimization according to chosen optimizer
         n_train= len(self.train_data)
         for i in range(self.epochs):
             np.random.shuffle(self.train_data)
@@ -296,7 +273,7 @@ class Network():
                 if a==1:
                     num += 1
                 if j+1%100 == 0:
-                    with open(self.file_path_1,'a') as f:
+                    with open(self.file_path_1,'a') as f: # Creating and storing data for log files 
                         f.write(f"Epoch {i+1}, Step {j+1}, Loss: {self.training_batch_loss(self.loss,self.train_data[j-99:j+1])}, Error:{(1-num/j+1)*100}, lr: {self.lr}\n")
 
             if self.anneal == True:
@@ -304,7 +281,7 @@ class Network():
         with open(self.file_path_3,'a') as f:
             f.write(f"Weigths arrays for different layers {self.weights[1:]} \n and Biases arrays for different layers {self.bias[1:]}")
         
-    def optimization(self,train_data,epochs,optimizer,mini_batch_size,lr,beta,fun,loss,test_data,anneal):
+    def optimization(self,train_data,epochs,optimizer,mini_batch_size,lr,beta,fun,loss,test_data,anneal): 
         self.train_data = train_data
         self.epochs = epochs
         self.optimizer = optimizer
@@ -333,9 +310,9 @@ class Network():
                 with open(self.file_path_2,'a') as f:
                     f.write(f"Step {j+1}, Loss: {self.validation_batch_loss(self.loss,self.test_data[j-99:j+1])}, Error:{(1-num/j+1)*100}, lr: {self.lr}\n")
 
-import argparse
+import argparse # Using argparse module for passing command line inputs to our model
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser() 
 parser.add_argument('--lr', type=float, default=0.01, help='initial learning rate for gradient descent based algorithms')
 parser.add_argument('--momentum', type=float, default=0.5, help='momentum to be used by momentum based algorithms')
 parser.add_argument('--num_hidden', type=int, default=3, help='number of hidden layers')
@@ -353,9 +330,7 @@ parser.add_argument('--test', type=str, default='test.csv', help='path to the te
 args = parser.parse_args()
 print(args.sizes)
 if __name__== '__main__':
-    # sizes = list(map(int, args.sizes.split(',')))
     sizes = args.sizes
     model = Network(sizes)
-    # model = Network(args.sizes)
     model.optimization(train_data,10,args.opt,args.batch_size,args.lr,args.momentum,args.activation,args.loss,test_data,args.anneal)
     
